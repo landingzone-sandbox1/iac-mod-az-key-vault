@@ -1,0 +1,9 @@
+name: New Release
+run-name: New Release by @${{ github.actor }}
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  cd:
+    uses: landingzone-sandbox/actions-templates/.github/workflows/iac-cd-modules.yml@main

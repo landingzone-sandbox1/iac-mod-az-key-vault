@@ -1,0 +1,6 @@
+#!/bin/sh
+
+make pre-commit
+
+files=$(find . -type f \( -name '*.tf' -o -name '*.md' \))
+git add $files

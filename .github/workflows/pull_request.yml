@@ -1,0 +1,16 @@
+name: Pull Request Check
+run-name: Pull Request to ${{ github.base_ref }} by @${{ github.actor }}
+on:
+  pull_request:
+    branches:
+      - main
+permissions:
+  contents: read
+  pull-requests: read
+  security-events: write
+  actions: read
+jobs:
+  check:
+    uses: landingzone-sandbox/actions-templates/.github/workflows/iac-ci-modules.yml@main
+    secrets:
+      GH_REPOSITORY_TOKEN: ${{ secrets.GH_REPOSITORY_TOKEN }}

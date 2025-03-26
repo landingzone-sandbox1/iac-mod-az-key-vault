@@ -1,0 +1,10 @@
+#!/bin/sh
+
+commit_msg_file=$1
+commit_msg=$(cat $commit_msg_file)
+
+if ! echo "$commit_msg" | grep -iqE '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?: .+$'; then
+  echo "Commit message does not follow Conventional Commits"
+  echo "See https://www.conventionalcommits.org/en/v1.0.0/"
+  exit 1
+fi
