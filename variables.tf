@@ -5,7 +5,7 @@ variable "location" {
 }
 
 variable "region_code" {
-  type = string
+  type        = string
   description = "Region code (e.g., EU2 for East US 2)"
 }
 variable "objective_code" {
@@ -17,7 +17,7 @@ variable "application_code" {
 }
 
 variable "environment" {
-  type = string
+  type        = string
   description = "Environment code (e.g., D, P, C)"
 }
 
