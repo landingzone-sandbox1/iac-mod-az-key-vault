@@ -4,28 +4,27 @@ variable "location" {
   nullable    = false
 }
 
-variable "name" {
+variable "region_code" {
+  type = string
+  description = "Region code (e.g., EU2 for East US 2)"
+}
+variable "objective_code" {
   type        = string
-  description = "The name of the Key Vault."
-
-  validation {
-    condition     = can(regex("^[a-zA-Z0-9-]{3,24}$", var.name))
-    error_message = "The name must be between 3 and 24 characters long and can only contain letters, numbers and dashes."
-  }
-  validation {
-    error_message = "The name must not contain two consecutive dashes"
-    condition     = !can(regex("--", var.name))
-  }
-  validation {
-    error_message = "The name must start with a letter"
-    condition     = can(regex("^[a-zA-Z]", var.name))
-  }
-  validation {
-    error_message = "The name must end with a letter or number"
-    condition     = can(regex("[a-zA-Z0-9]$", var.name))
-  }
+  description = "Objective code for the resource (e.g., SECU for Key Vault security)"
+}
+variable "application_code" {
+  type = string
 }
 
+variable "environment" {
+  type = string
+  description = "Environment code (e.g., D, P, C)"
+}
+
+variable "correlative" {
+  type    = string
+  default = "01"
+}
 # This is required for most resource modules
 variable "resource_group_name" {
   type        = string
