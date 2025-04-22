@@ -1,7 +1,7 @@
 # TODO: insert locals here.
 locals {
   role_definition_resource_substring = "/providers/Microsoft.Authorization/roleDefinitions"
-  service_code_akv                   = "AKV"
+  service_code_akv                   = "AZKV"
 }
 # # Private endpoint application security group associations
 # locals {
