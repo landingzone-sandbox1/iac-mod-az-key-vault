@@ -6,19 +6,22 @@ variable "location" {
 
 variable "region_code" {
   type        = string
-  description = "Region code (e.g., EU2 for East US 2)"
+  description = "3 letter Region code (e.g., EU2 for East US 2)"
 }
-variable "objective_code" {
-  type        = string
-  description = "Objective code for the resource (e.g., SECU for Key Vault security)"
-}
+
 variable "application_code" {
   type = string
+  description = "4 letter abbreviation of the associated application"
+}
+
+variable "objective" {
+  type = string
+  description = "4 letter abbreviation of the objective of the resource"
 }
 
 variable "environment" {
   type        = string
-  description = "Environment code (e.g., D, P, C)"
+  description = "Environment code (e.g., D, P, C, F)"
 }
 
 variable "correlative" {

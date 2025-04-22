@@ -1,6 +1,6 @@
 resource "azurerm_key_vault" "this" {
   location                        = var.location
-  name                            = "${local.service_code_akv}${var.region_code}${var.application_code}${var.objective_code}${var.environment}${var.correlative}"
+  name                            = "${local.service_code_akv}${var.region_code}${var.application_code}${var.objective}${var.environment}${var.correlative}"
   resource_group_name             = var.resource_group_name
   tenant_id                       = var.tenant_id
   sku_name                        = var.sku_name
