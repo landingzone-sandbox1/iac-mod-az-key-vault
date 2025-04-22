@@ -41,10 +41,6 @@ variable "tenant_id" {
   }
 }
 
-variable "subscription_id" {
-  type        = string
-  description = "The Azure Sub ID used for authenticating requests to Key Vault. You can use the `azurerm_client_config` data source to retrieve it."
-}
 variable "contacts" {
   type = map(object({
     email = string
