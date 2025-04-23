@@ -9,7 +9,7 @@ variable "region_code" {
   description = "3 letter Region code (e.g., EU2 for East US 2)"
 }
 
-variable "application_code" {
+variable "app_code" {
   type = string
   description = "4 letter abbreviation of the associated application"
 }
@@ -107,7 +107,7 @@ variable "enabled_for_deployment" {
 
 variable "enabled_for_disk_encryption" {
   type        = bool
-  default     = false
+  default     = true
   description = "Specifies whether Azure Disk Encryption is permitted to retrieve secrets from the vault and unwrap keys."
 }
 
@@ -226,7 +226,28 @@ DESCRIPTION
     condition     = alltrue([for _, v in var.legacy_access_policies : length(v.certificate_permissions) + length(v.key_permissions) + length(v.secret_permissions) + length(v.storage_permissions) > 0])
   }
 }
+variable "object_id" {
+  description = "The object ID of the user, group, or application that requires access to the Key Vault."
+  type        = string
+}
 
+variable "secret_permissions" {
+  description = "List of permissions for secrets in the Key Vault."
+  type        = list(string)
+  default     = ["Get", "List", "Set", "Delete"] # Updated to PascalCase
+}
+
+variable "key_permissions" {
+  description = "List of permissions for keys in the Key Vault."
+  type        = list(string)
+  default     = ["Get", "Create", "Delete"] # Updated to PascalCase
+}
+
+variable "certificate_permissions" {
+  description = "List of permissions for certificates in the Key Vault."
+  type        = list(string)
+  default     = ["Get", "List", "Create", "Delete"] # Updated to PascalCase
+}
 variable "legacy_access_policies_enabled" {
   type        = bool
   default     = false
@@ -250,7 +271,7 @@ variable "lock" {
 
 variable "network_acls" {
   type = object({
-    bypass                     = optional(string, "None")
+    bypass                     = optional(string, "AzureServices") 
     default_action             = optional(string, "Deny")
     ip_rules                   = optional(list(string), [])
     virtual_network_subnet_ids = optional(list(string), [])
@@ -261,7 +282,7 @@ The network ACL configuration for the Key Vault.
 If not specified then the Key Vault will be created with a firewall that blocks access.
 Specify `null` to create the Key Vault with no firewall.
 
-- `bypass` - (Optional) Should Azure Services bypass the ACL. Possible values are `AzureServices` and `None`. Defaults to `None`.
+- `bypass` - (Optional) Should Azure Services bypass the ACL. Possible values are `AzureServices` and `None`. Defaults to `AzureServices`.
 - `default_action` - (Optional) The default action when no rule matches. Possible values are `Allow` and `Deny`. Defaults to `Deny`.
 - `ip_rules` - (Optional) A list of IP rules in CIDR format. Defaults to `[]`.
 - `virtual_network_subnet_ids` - (Optional) When using with Service Endpoints, a list of subnet IDs to associate with the Key Vault. Defaults to `[]`.
@@ -276,6 +297,7 @@ DESCRIPTION
     error_message = "The default_action value must be either `Allow` or `Deny`."
   }
 }
+
 
 variable "private_endpoints" {
   type = map(object({
