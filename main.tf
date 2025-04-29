@@ -73,5 +73,3 @@ resource "azurerm_management_lock" "this" {
   scope      = azurerm_key_vault.this.id
   notes      = var.lock.kind == "CanNotDelete" ? "Cannot delete the resource or its child resources." : "Cannot delete or modify the resource or its child resources."
 }
-
-
