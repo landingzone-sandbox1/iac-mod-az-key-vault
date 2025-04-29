@@ -234,19 +234,19 @@ variable "object_id" {
 variable "secret_permissions" {
   description = "List of permissions for secrets in the Key Vault."
   type        = list(string)
-  default     = ["Get", "List", "Set", "Delete"] # Updated to PascalCase
+  default     = ["Get", "List", "Set", "Delete"]
 }
 
 variable "key_permissions" {
   description = "List of permissions for keys in the Key Vault."
   type        = list(string)
-  default     = ["Get", "Create", "Delete"] # Updated to PascalCase
+  default     = ["Get", "Create", "Delete"]
 }
 
 variable "certificate_permissions" {
   description = "List of permissions for certificates in the Key Vault."
   type        = list(string)
-  default     = ["Get", "List", "Create", "Delete"] # Updated to PascalCase
+  default     = ["Get", "List", "Create", "Delete"] 
 }
 variable "legacy_access_policies_enabled" {
   type        = bool
