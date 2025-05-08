@@ -362,7 +362,7 @@ variable "private_endpoints_manage_dns_zone_group" {
 
 variable "public_network_access_enabled" {
   type        = bool
-  default     = true
+  default     = false
   description = "Specifies whether public access is permitted."
 }
 
