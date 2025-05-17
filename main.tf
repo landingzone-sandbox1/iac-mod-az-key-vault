@@ -24,10 +24,10 @@ resource "azurerm_key_vault" "this" {
     }
   }
   access_policy {
-    tenant_id             = var.tenant_id
-    object_id             = var.object_id 
-    secret_permissions    = var.secret_permissions
-    key_permissions       = var.key_permissions
+    tenant_id               = var.tenant_id
+    object_id               = var.object_id
+    secret_permissions      = var.secret_permissions
+    key_permissions         = var.key_permissions
     certificate_permissions = var.certificate_permissions
   }
 }
