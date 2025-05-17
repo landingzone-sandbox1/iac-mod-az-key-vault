@@ -10,12 +10,12 @@ variable "region_code" {
 }
 
 variable "application_code" {
-  type = string
+  type        = string
   description = "4 letter abbreviation of the associated application"
 }
 
 variable "objective_code" {
-  type = string
+  type        = string
   description = "4 letter abbreviation of the objective of the resource"
 }
 
@@ -202,7 +202,7 @@ variable "key_permissions" {
 variable "certificate_permissions" {
   description = "List of permissions for certificates in the Key Vault."
   type        = list(string)
-  default     = ["Get", "List", "Create", "Delete"] 
+  default     = ["Get", "List", "Create", "Delete"]
 }
 variable "legacy_access_policies_enabled" {
   type        = bool
@@ -227,7 +227,7 @@ variable "lock" {
 
 variable "network_acls" {
   type = object({
-    bypass                     = optional(string, "AzureServices") 
+    bypass                     = optional(string, "AzureServices")
     default_action             = optional(string, "Deny")
     ip_rules                   = optional(list(string), [])
     virtual_network_subnet_ids = optional(list(string), [])
