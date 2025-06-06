@@ -5,5 +5,41 @@ on:
 permissions:
   contents: write
 jobs:
+  validation:
+    runs-on: ubuntu-latest
+    outputs:
+      teams: ${{ steps.actorTeams.outputs.teams }}
+    steps:
+      - name: Get Teams from the Actor
+        uses: tspascoal/get-user-teams-membership@v2
+        id: actorTeams
+        with:
+          username: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT_READ_ORG }}
   cd:
+    name: Deploy to Production
     uses: landingzone-sandbox/actions-templates/.github/workflows/iac-cd-modules.yml@main
+    if: github.ref == 'refs/heads/main' && contains(needs.validation.outputs.teams, 'gh-it-engineering')
+    needs: validation
+  
+  check-cd-status:
+    name: Check CD Status
+    runs-on: ubuntu-latest
+    needs: [validation, cd]
+    if: always()
+    steps:
+      - name: Check if CD was skipped
+        run: |
+          if [[ "${{ needs.cd.result }}" == "skipped" ]]; then
+            echo "::error::CD job was skipped. This usually means:"
+            echo "::error::- The branch is not 'main', or"
+            echo "::error::- The actor '${{ github.actor }}' is not a member of 'gh-it-engineering' team"
+            echo "::error::Current branch: ${{ github.ref }}"
+            echo "::error::Actor teams: ${{ needs.validation.outputs.teams }}"
+            exit 1
+          elif [[ "${{ needs.cd.result }}" == "failure" ]]; then
+            echo "::error::CD job failed during execution"
+            exit 1
+          else
+            echo "::notice::CD job completed successfully with status: ${{ needs.cd.result }}"
+          fi
