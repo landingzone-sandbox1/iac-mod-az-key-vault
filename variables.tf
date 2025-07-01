@@ -25,13 +25,8 @@ variable "environment" {
 }
 
 variable "correlative" {
-  type    = string
-  default = "01"
-}
-# This is required for most resource modules
-variable "resource_group_name" {
+  description = "2-digit correlative number to uniquely identify resources."
   type        = string
-  description = "The resource group where the resources will be deployed."
 }
 
 variable "tenant_id" {
@@ -43,9 +38,6 @@ variable "tenant_id" {
     error_message = "The tenant ID must be a valid GUID. Letters must be lowercase."
   }
 }
-
-
-
 
 variable "enabled_for_deployment" {
   type        = bool
@@ -63,38 +55,6 @@ variable "enabled_for_template_deployment" {
   type        = bool
   default     = false
   description = "Specifies whether Azure Resource Manager is permitted to retrieve secrets from the vault."
-}
-
-
-
-
-variable "object_id" {
-  description = "The object ID of the user, group, or application that requires access to the Key Vault."
-  type        = string
-}
-
-variable "secret_permissions" {
-  description = "List of permissions for secrets in the Key Vault."
-  type        = list(string)
-  default     = ["Get", "List", "Set", "Delete"]
-}
-
-variable "key_permissions" {
-  description = "List of permissions for keys in the Key Vault."
-  type        = list(string)
-  default     = ["Get", "Create", "Delete"]
-}
-
-variable "certificate_permissions" {
-  description = "List of permissions for certificates in the Key Vault."
-  type        = list(string)
-  default     = ["Get", "List", "Create", "Delete"]
-}
-variable "legacy_access_policies_enabled" {
-  type        = bool
-  default     = false
-  description = "Specifies whether legacy access policies are enabled for this Key Vault. Prevents use of Azure RBAC for data plane."
-  nullable    = false
 }
 
 variable "lock" {
