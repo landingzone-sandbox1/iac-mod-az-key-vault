@@ -1,6 +1,6 @@
 resource "azurerm_key_vault" "this" {
   location                        = var.location
-  name                            = "${local.service_code_akv}${var.region_code}${var.application_code}${var.objective_code}${var.environment}${var.correlative}"
+  name                            = "${local.service_code_akv}${local.region_code}${local.application_code}${local.objective_code}${local.environment}${local.correlative}"
   resource_group_name             = local.resource_group_name
   tenant_id                       = var.tenant_id
   sku_name                        = var.sku_name
@@ -14,7 +14,15 @@ resource "azurerm_key_vault" "this" {
   tags                            = var.tags
 
   dynamic "network_acls" {
-    for_each = var.network_acls != null ? { this = var.network_acls } : {}
+    # Prioritize network_settings, then fall back to network_acls
+    for_each = length(var.network_settings.firewall_ips) > 0 || length(var.network_settings.vnet_subnet_ids) > 0 ? {
+      this = {
+        bypass                     = "AzureServices"
+        default_action             = "Deny"
+        ip_rules                   = var.network_settings.firewall_ips
+        virtual_network_subnet_ids = var.network_settings.vnet_subnet_ids
+      }
+    } : (var.network_acls != null ? { this = var.network_acls } : {})
 
     content {
       bypass                     = network_acls.value.bypass
@@ -24,6 +32,21 @@ resource "azurerm_key_vault" "this" {
     }
   }
 }
+
+# Role assignments for the Key Vault (standalone parameter)
+resource "azurerm_role_assignment" "this" {
+  for_each = var.role_assignments
+
+  principal_id                           = each.value.principal_id
+  scope                                  = azurerm_key_vault.this.id
+  role_definition_name                   = each.value.role_definition_id_or_name
+  description                            = each.value.description
+  skip_service_principal_aad_check       = each.value.skip_service_principal_aad_check
+  condition                              = each.value.condition
+  condition_version                      = each.value.condition_version
+  delegated_managed_identity_resource_id = each.value.delegated_managed_identity_resource_id
+}
+
 resource "azurerm_management_lock" "this" {
   count = var.lock != null ? 1 : 0
 

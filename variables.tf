@@ -100,10 +100,96 @@ DESCRIPTION
   }
 }
 
+# Naming convention object (optional - fallback to individual variables if not provided)
+variable "naming" {
+  description = "Naming convention object for resource naming."
+  type = object({
+    application_code = string
+    region_code      = string
+    environment      = string
+    correlative      = string
+    objective_code   = string
+  })
+  default = null
+}
 
+# Network and RBAC settings (standardized parameter)
+variable "network_settings" {
+  description = "Network configuration for the Key Vault."
+  type = object({
+    firewall_ips    = optional(list(string), [])
+    vnet_subnet_ids = optional(list(string), [])
+  })
+  default = {
+    firewall_ips    = []
+    vnet_subnet_ids = []
+  }
 
+  validation {
+    condition = alltrue([
+      for ip in var.network_settings.firewall_ips : can(regex("^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}(?:/[0-9]{1,2})?$", ip))
+    ])
+    error_message = "Each firewall IP must be a valid IPv4 address or CIDR block."
+  }
 
+  validation {
+    condition = alltrue([
+      for id in var.network_settings.vnet_subnet_ids : can(regex("^/subscriptions/.+/resourceGroups/.+/providers/Microsoft.Network/virtualNetworks/.+/subnets/.+$", id))
+    ])
+    error_message = "Each subnet ID must be a valid Azure subnet resource ID."
+  }
+}
 
+# Standalone role assignments parameter
+variable "role_assignments" {
+  description = "Role assignments for the Key Vault. Uses least-privilege principle."
+  type = map(object({
+    role_definition_id_or_name             = string
+    principal_id                           = string
+    principal_type                         = string
+    description                            = optional(string, null)
+    skip_service_principal_aad_check       = optional(bool, false)
+    condition                              = optional(string, null)
+    condition_version                      = optional(string, null)
+    delegated_managed_identity_resource_id = optional(string, null)
+  }))
+  default = {}
+
+  validation {
+    condition = alltrue([
+      for k, v in var.role_assignments : contains([
+        # Key Vault specific least-privilege roles
+        "Key Vault Reader",
+        "Key Vault Secrets User",
+        "Key Vault Secrets Officer",
+        "Key Vault Crypto User",
+        "Key Vault Crypto Officer",
+        "Key Vault Certificate User",
+        "Key Vault Certificates Officer",
+        # General least-privilege roles
+        "Reader",
+        "Contributor",
+        "Security Reader",
+        "Monitoring Reader"
+      ], v.role_definition_id_or_name)
+    ])
+    error_message = "Only least-privilege Key Vault roles are allowed. Use specific Key Vault reader, user, or officer roles."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.role_assignments : contains(["User", "Group", "ServicePrincipal"], v.principal_type)
+    ])
+    error_message = "principal_type must be one of: User, Group, ServicePrincipal."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.role_assignments : can(regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", v.principal_id))
+    ])
+    error_message = "principal_id must be a valid GUID format."
+  }
+}
 
 variable "public_network_access_enabled" {
   type        = bool
