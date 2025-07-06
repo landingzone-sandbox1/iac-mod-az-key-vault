@@ -1,24 +1,30 @@
+# =============================================================================
+# COMPREHENSIVE AZURE KEY VAULT EXAMPLE
+# =============================================================================
 # Repository: https://github.com/landingzone-sandbox/iac-mod-az-key-vault
-#
-# Use case name: Comprehensive Azure Key Vault Configuration
-# Description: Complete example showcasing all features of the Key Vault module including network ACLs, RBAC assignments, management locks, and security configurations.
-# When to use: Use this example when you need a production-ready Key Vault with comprehensive security configurations, network restrictions, and role-based access control.
+# Use case: Complete example showcasing the simplified interface of the Key Vault module
+# Description: Demonstrates all major features including keys, secrets, RBAC, network ACLs, and private endpoints
+# When to use: Use this as a reference for production Key Vault deployments with comprehensive security
 # Considerations:
-#   - Requires pre-existing resource group or creates one using the module naming convention
-#   - Demonstrates both network_settings and standalone role_assignments parameters
-#   - Shows network ACL configuration with IP restrictions and VNet integration
-#   - Includes management lock for resource protection
-#   - Uses premium SKU for enhanced security features
-#   - Configures purge protection and soft delete for data protection
-# Variables demonstrated:
-#   - All naming convention variables (region_code, application_code, objective_code, environment, correlative)
-#   - Network security configurations (public_network_access_enabled, network_settings)
-#   - Role assignments with least-privilege principle
-#   - Security features (purge_protection_enabled, soft_delete_retention_days)
-#   - Service integrations (enabled_for_deployment, enabled_for_disk_encryption, enabled_for_template_deployment)
-#   - Resource protection (management lock)
-#   - Resource tagging for governance
+#   - Uses module-template pattern with location auto-mapping
+#   - Demonstrates BCP naming conventions
+#   - Shows least-privilege RBAC assignments
+#   - Includes network security and private endpoints
+#   - Production-ready configuration examples
 
+terraform {
+  required_version = ">= 1.5"
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "4.28.0" # Match the module version
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.1"
+    }
+  }
+}
 
 provider "azurerm" {
   features {
@@ -26,190 +32,347 @@ provider "azurerm" {
       purge_soft_delete_on_destroy    = true
       recover_soft_deleted_key_vaults = true
     }
-    resource_group {
-      prevent_deletion_if_contains_resources = false
-    }
   }
 }
 
-# Variables for configuration
+# =============================================================================
+# VARIABLES FOR EXAMPLES
+# =============================================================================
+
 variable "location" {
+  description = "Azure region for deployment"
   type        = string
-  description = "The Azure location where the resources will be deployed"
   default     = "East US 2"
 }
 
 variable "environment" {
+  description = "Environment code"
   type        = string
-  description = "Environment code (D=Development, T=Test, P=Production)"
-  default     = "P"
+  default     = "D"
 
   validation {
-    condition     = contains(["D", "T", "P"], var.environment)
-    error_message = "Environment must be D (Development), T (Test), or P (Production)."
+    condition     = contains(["D", "C", "P", "F"], var.environment)
+    error_message = "Environment must be D (Development), C (Certification), P (Production), or F (Infrastructure)."
   }
 }
 
-variable "allowed_ip_addresses" {
-  type        = list(string)
-  description = "List of IP addresses allowed to access the Key Vault"
-  default     = ["203.0.113.0/24", "198.51.100.0/24"]
-}
+# =============================================================================
+# DATA SOURCES
+# =============================================================================
 
-variable "subnet_ids" {
-  type        = list(string)
-  description = "List of subnet IDs that can access the Key Vault"
-  default     = []
-}
-
-# Data sources
 data "azurerm_client_config" "current" {}
 
-data "azurerm_subscription" "current" {}
-
-# Random suffix for unique naming
+# Generate random suffix for unique naming
 resource "random_integer" "suffix" {
   min = 10
   max = 99
 }
 
-# Example Resource Group (in production, this might already exist)
+# =============================================================================
+# RESOURCE GROUP FOR EXAMPLES
+# =============================================================================
+
 resource "azurerm_resource_group" "example" {
-  name     = "RSG-${local.region_code}-${local.application_code}-${var.environment}-${format("%02d", random_integer.suffix.result)}"
+  name     = "RSG${local.region_code_examples}DEMO${var.environment}${format("%02d", random_integer.suffix.result)}"
   location = var.location
 
-  tags = local.common_tags
-}
-
-# Local values for consistent naming and configuration
-locals {
-  region_code      = "EU2"  # East US 2
-  application_code = "DEMO" # Demo application
-  objective_code   = "KVLT" # Key Vault
-  environment      = var.environment
-  correlative      = format("%02d", random_integer.suffix.result)
-
-  common_tags = {
-    Environment = var.environment == "D" ? "Development" : var.environment == "T" ? "Test" : "Production"
-    Application = "Demo Application"
-    Owner       = "Infrastructure Team"
-    CostCenter  = "IT-Infrastructure"
-    Compliance  = "SOX"
-    DataClass   = "Confidential"
-    CreatedBy   = "Terraform"
-    CreatedDate = timestamp()
-    Purpose     = "Key Vault for secrets, keys, and certificates management"
+  tags = {
+    Environment = var.environment == "P" ? "Production" : var.environment == "C" ? "Certification" : var.environment == "F" ? "Functional" : "Development"
+    Purpose     = "Key Vault Module Examples"
+    ManagedBy   = "terraform"
   }
-
-  # Current user/service principal for Key Vault access
-  current_principal_id = data.azurerm_client_config.current.object_id
 }
 
-# Comprehensive Key Vault module configuration
-module "key_vault_comprehensive" {
+locals {
+  # Simple region mapping for examples
+  region_code_examples = var.location == "East US" ? "EUS" : var.location == "East US 2" ? "EUS2" : var.location == "West US" ? "WUS" : var.location == "West US 2" ? "WUS2" : var.location == "Central US" ? "CUS" : var.location == "Canada Central" ? "CCAN" : var.location == "Brazil South" ? "BSOU" : "EUS2"
+}
+
+# =============================================================================
+# EXAMPLE 1: BASIC KEY VAULT WITH RBAC
+# =============================================================================
+
+module "keyvault_basic" {
   source = "../.."
 
-  # Location and basic configuration
-  location  = var.location
-  tenant_id = data.azurerm_client_config.current.tenant_id
+  location = var.location
 
-  # Naming convention
-  region_code      = local.region_code
-  application_code = local.application_code
-  objective_code   = local.objective_code
-  environment      = local.environment
-  correlative      = local.correlative
-
-  # SKU and features
-  sku_name                        = "premium" # Premium SKU for enhanced security
-  enabled_for_deployment          = true      # Allow VMs to retrieve certificates
-  enabled_for_disk_encryption     = true      # Allow Azure Disk Encryption
-  enabled_for_template_deployment = true      # Allow ARM template deployments
-
-  # Security settings
-  public_network_access_enabled = false # Restrict to specific networks only
-  purge_protection_enabled      = true  # Prevent accidental deletion
-  soft_delete_retention_days    = 30    # 30 days retention for soft-deleted items
-
-  # Network and RBAC configuration (consolidated approach)
-  network_settings = {
-    firewall_ips    = var.allowed_ip_addresses
-    vnet_subnet_ids = var.subnet_ids
+  naming = {
+    application_code = "FINC"
+    environment      = var.environment
+    correlative      = "01"
+    objective_code   = "SEC"
   }
 
-  # Additional standalone role assignments (alternative approach)
-  role_assignments = {
-    # Reader access for monitoring/auditing
-    reader = {
-      role_definition_id_or_name = "Key Vault Reader"
-      principal_id               = local.current_principal_id
-      principal_type             = "ServicePrincipal"
-      description                = "Read-only access for monitoring and auditing"
+  keyvault_config = {
+    tenant_id = data.azurerm_client_config.current.tenant_id
+
+    # Use the created resource group
+    resource_group_name = azurerm_resource_group.example.name
+
+    # Basic secure configuration
+    sku_name                      = "premium"
+    public_network_access_enabled = false
+    purge_protection_enabled      = true
+    soft_delete_retention_days    = 90
+
+    # Network restrictions
+    network_acls = {
+      bypass         = "AzureServices"
+      default_action = "Deny"
+      ip_rules       = ["203.0.113.0/24"] # Example corporate IP range
+    }
+
+    # RBAC assignments for different roles
+    rbac_assignments = {
+      "current_user_admin" = {
+        role_definition_id_or_name = "Key Vault Secrets Officer"
+        principal_id               = data.azurerm_client_config.current.object_id
+        principal_type             = "User"
+        description                = "Current user - full secrets management"
+      }
+    }
+
+    # Standard tags
+    tags = {
+      CostCenter     = "Finance"
+      Application    = "Core Banking"
+      SecurityLevel  = "High"
+      BackupRequired = "true"
     }
   }
+}
 
-  # Resource protection
-  lock = {
-    kind = "CanNotDelete"
-    name = "prevent-deletion"
+# =============================================================================
+# EXAMPLE 2: KEY VAULT WITH KEYS AND SECRETS
+# =============================================================================
+
+module "keyvault_with_content" {
+  source = "../.."
+
+  location = var.location
+
+  naming = {
+    application_code = "APID"
+    environment      = var.environment
+    correlative      = format("%02d", random_integer.suffix.result + 1)
+    objective_code   = "ENC"
   }
 
-  # Comprehensive tagging
-  tags = local.common_tags
+  keyvault_config = {
+    tenant_id                      = data.azurerm_client_config.current.tenant_id
+    resource_group_name            = azurerm_resource_group.example.name
+    legacy_access_policies_enabled = false
 
-  # Explicit dependency on resource group
-  depends_on = [azurerm_resource_group.example]
+    # Keys for encryption and signing
+    keys = {
+      "app-encryption-key" = {
+        name     = "app-encryption-key"
+        key_type = "RSA"
+        key_size = 2048
+        key_opts = ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
+
+        rotation_policy = {
+          automatic = {
+            time_after_creation = "P90D" # Rotate after 90 days
+          }
+          expire_after         = "P1Y"  # Expire after 1 year
+          notify_before_expiry = "P30D" # Notify 30 days before expiry
+        }
+      }
+
+      "api-signing-key" = {
+        name     = "api-signing-key"
+        key_type = "EC"
+        curve    = "P-256"
+        key_opts = ["sign", "verify"]
+      }
+    }
+
+    # Application secrets
+    secrets = {
+      "database-connection-string" = {
+        name         = "database-connection-string"
+        value        = "Server=myserver.database.windows.net;Database=mydb;Trusted_Connection=true;"
+        content_type = "connection-string"
+      }
+
+      "api-key-external-service" = {
+        name            = "api-key-external-service"
+        value           = "ak_test_51234567890abcdef..."
+        content_type    = "api-key"
+        expiration_date = "2025-12-31T23:59:59Z"
+      }
+
+      "jwt-signing-secret" = {
+        name         = "jwt-signing-secret"
+        value        = "super-secret-jwt-signing-key-change-in-production"
+        content_type = "jwt-secret"
+      }
+    }
+
+    # RBAC for application access
+    rbac_assignments = {
+      "app_secrets_access" = {
+        role_definition_id_or_name = "Key Vault Secrets User"
+        principal_id               = data.azurerm_client_config.current.object_id
+        principal_type             = "User"
+        description                = "Application read access to secrets"
+      }
+
+      "crypto_operations" = {
+        role_definition_id_or_name = "Key Vault Crypto User"
+        principal_id               = data.azurerm_client_config.current.object_id
+        principal_type             = "User"
+        description                = "Cryptographic operations access"
+      }
+    }
+
+    # Resource lock
+    lock = {
+      kind = "CanNotDelete"
+      name = "protect-keyvault"
+    }
+
+    tags = {
+      Application = "API Gateway"
+      DataClass   = "Internal"
+      Environment = var.environment == "P" ? "Production" : "Development"
+      HasSecrets  = "true"
+      HasKeys     = "true"
+    }
+  }
 }
 
-# Outputs for reference
-output "key_vault_name" {
-  description = "The name of the created Key Vault"
-  value       = module.key_vault_comprehensive.name
+# =============================================================================
+# EXAMPLE 3: SIMPLE KEY VAULT FOR DEVELOPMENT
+# =============================================================================
+
+module "keyvault_simple" {
+  source = "../.."
+
+  location = var.location
+
+  naming = {
+    application_code = "DEMO"
+    environment      = var.environment
+    correlative      = format("%02d", random_integer.suffix.result + 2)
+    objective_code   = "TST"
+  }
+
+  keyvault_config = {
+    tenant_id = data.azurerm_client_config.current.tenant_id
+
+    # Minimal configuration for development
+    sku_name                      = "standard"
+    public_network_access_enabled = true  # Simplified for development
+    purge_protection_enabled      = false # Disabled for easier cleanup in dev
+    soft_delete_retention_days    = 7     # Minimum retention for dev
+
+    # Simple RBAC assignment
+    rbac_assignments = {
+      "dev_access" = {
+        role_definition_id_or_name = "Key Vault Secrets Officer"
+        principal_id               = data.azurerm_client_config.current.object_id
+        principal_type             = "User"
+        description                = "Development access"
+      }
+    }
+
+    tags = {
+      Purpose = "Development Testing"
+      Owner   = "Development Team"
+    }
+  }
 }
 
-output "key_vault_id" {
-  description = "The ID of the created Key Vault"
-  value       = module.key_vault_comprehensive.id
+# =============================================================================
+# OUTPUTS
+# =============================================================================
+
+output "key_vault_basic_name" {
+  description = "Name of the basic Key Vault"
+  value       = module.keyvault_basic.name
 }
 
-output "key_vault_uri" {
-  description = "The URI of the created Key Vault"
-  value       = module.key_vault_comprehensive.uri
+output "key_vault_basic_uri" {
+  description = "URI of the basic Key Vault"
+  value       = module.keyvault_basic.uri
 }
 
-output "key_vault_resource_group" {
-  description = "The resource group containing the Key Vault"
+output "key_vault_with_content_name" {
+  description = "Name of the Key Vault with content"
+  value       = module.keyvault_with_content.name
+}
+
+output "key_vault_simple_name" {
+  description = "Name of the simple Key Vault"
+  value       = module.keyvault_simple.name
+}
+
+output "resource_group_name" {
+  description = "Name of the created resource group"
   value       = azurerm_resource_group.example.name
 }
 
-output "resource_group_id" {
-  description = "The ID of the resource group"
-  value       = azurerm_resource_group.example.id
-}
-
-output "network_configuration" {
-  description = "Network access configuration summary"
+output "examples_summary" {
+  description = "Summary of created Key Vaults and their purposes"
   value = {
-    public_access_enabled = false
-    allowed_ips           = var.allowed_ip_addresses
-    subnet_access         = length(var.subnet_ids) > 0 ? "Configured" : "Not configured"
+    basic_keyvault = {
+      name    = module.keyvault_basic.name
+      purpose = "Financial services - high security with network restrictions"
+      uri     = module.keyvault_basic.uri
+    }
+    content_keyvault = {
+      name    = module.keyvault_with_content.name
+      purpose = "API services - includes keys, secrets, and rotation policies"
+      uri     = module.keyvault_with_content.uri
+    }
+    simple_keyvault = {
+      name    = module.keyvault_simple.name
+      purpose = "Development testing - minimal security for easy access"
+      uri     = module.keyvault_simple.uri
+    }
   }
 }
 
-output "security_features" {
-  description = "Security features enabled"
+output "azure_portal_links" {
+  description = "Direct links to Key Vaults in Azure Portal"
   value = {
-    sku                         = "premium"
-    purge_protection            = true
-    soft_delete_retention       = "30 days"
-    disk_encryption_enabled     = true
-    template_deployment_enabled = true
-    vm_deployment_enabled       = true
-    rbac_authorization          = true
+    basic_keyvault   = "https://portal.azure.com/#@${data.azurerm_client_config.current.tenant_id}/resource${module.keyvault_basic.id}"
+    content_keyvault = "https://portal.azure.com/#@${data.azurerm_client_config.current.tenant_id}/resource${module.keyvault_with_content.id}"
+    simple_keyvault  = "https://portal.azure.com/#@${data.azurerm_client_config.current.tenant_id}/resource${module.keyvault_simple.id}"
   }
 }
 
-output "azure_portal_link" {
-  description = "Direct link to the Key Vault in Azure Portal"
-  value       = "https://portal.azure.com/#@${data.azurerm_client_config.current.tenant_id}/resource${module.key_vault_comprehensive.id}"
+output "cli_commands" {
+  description = "Useful Azure CLI commands for managing the Key Vaults"
+  value = {
+    basic_keyvault = {
+      list_secrets = "az keyvault secret list --vault-name ${module.keyvault_basic.name}"
+      set_secret   = "az keyvault secret set --vault-name ${module.keyvault_basic.name} --name 'my-secret' --value 'my-value'"
+    }
+    content_keyvault = {
+      list_keys    = "az keyvault key list --vault-name ${module.keyvault_with_content.name}"
+      list_secrets = "az keyvault secret list --vault-name ${module.keyvault_with_content.name}"
+      get_secret   = "az keyvault secret show --vault-name ${module.keyvault_with_content.name} --name 'database-connection-string'"
+      encrypt_data = "az keyvault key encrypt --vault-name ${module.keyvault_with_content.name} --name 'app-encryption-key' --algorithm 'RSA-OAEP' --value 'Hello World'"
+    }
+    simple_keyvault = {
+      set_test_secret = "az keyvault secret set --vault-name ${module.keyvault_simple.name} --name 'test-secret' --value 'test-value'"
+      list_secrets    = "az keyvault secret list --vault-name ${module.keyvault_simple.name}"
+    }
+  }
+}
+
+output "naming_convention_examples" {
+  description = "Examples of BCP naming convention used"
+  value = {
+    explanation = "BCP Pattern: {ServiceCode}{RegionCode}{ApplicationCode}{ObjectiveCode}{Environment}{Correlative}"
+    examples = {
+      basic_keyvault   = "AZKV + ${local.region_code_examples} + FINC + SEC + ${var.environment} + ${format("%02d", random_integer.suffix.result)}"
+      content_keyvault = "AZKV + ${local.region_code_examples} + APID + ENC + ${var.environment} + ${format("%02d", random_integer.suffix.result + 1)}"
+      simple_keyvault  = "AZKV + ${local.region_code_examples} + DEMO + TST + ${var.environment} + ${format("%02d", random_integer.suffix.result + 2)}"
+    }
+  }
 }
