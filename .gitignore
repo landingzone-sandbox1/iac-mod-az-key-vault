@@ -72,3 +72,6 @@ TestRecord/
 .azure/
 
 /module-template/
+variables_from_main.tf
+variables-from-main.tf
+variables-simple.tf
