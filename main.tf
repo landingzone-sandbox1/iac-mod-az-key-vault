@@ -259,6 +259,40 @@ resource "azurerm_management_lock" "this" {
 }
 
 # =============================================================================
+# LT-4: DIAGNOSTIC SETTINGS FOR SECURITY INVESTIGATION (NUEVO LBS)
+# =============================================================================
+
+resource "azurerm_monitor_diagnostic_setting" "this" {
+  for_each = local.diagnostic_settings_enabled ? var.keyvault_config.diagnostic_settings : {}
+
+  name                           = each.value.name
+  target_resource_id             = azurerm_key_vault.this.id
+  log_analytics_workspace_id     = each.value.log_analytics_workspace_id
+  storage_account_id             = each.value.storage_account_id
+  eventhub_authorization_rule_id = each.value.eventhub_authorization_rule_id
+  eventhub_name                  = each.value.eventhub_name
+  partner_solution_id            = each.value.partner_solution_id
+
+  # LBS requirement: AuditEvent logs for security investigation
+  dynamic "enabled_log" {
+    for_each = each.value.enabled_logs
+    content {
+      category       = enabled_log.value.category
+      category_group = enabled_log.value.category_group
+    }
+  }
+
+  # Metrics for performance monitoring and security analysis
+  dynamic "metric" {
+    for_each = each.value.metrics
+    content {
+      category = metric.value.category
+      enabled  = metric.value.enabled
+    }
+  }
+}
+
+# =============================================================================
 # LEGACY ACCESS POLICIES (if enabled)
 # =============================================================================
 

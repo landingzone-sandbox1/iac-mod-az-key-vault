@@ -191,6 +191,37 @@ variable "keyvault_config" {
 
     # Resource Tags
     tags = optional(map(string), {})
+
+    # LT-4: Diagnostic Settings for Security Investigation (NUEVO LBS)
+    diagnostic_settings = optional(map(object({
+      name                           = string
+      log_analytics_workspace_id     = optional(string)
+      storage_account_id             = optional(string)
+      eventhub_authorization_rule_id = optional(string)
+      eventhub_name                  = optional(string)
+      partner_solution_id            = optional(string)
+
+      # LBS requirement: AuditEvent logs for security investigation
+      enabled_logs = optional(list(object({
+        category       = optional(string)
+        category_group = optional(string)
+        })), [
+        {
+          category_group = "audit" # Required by LBS for AuditEvent logs
+        }
+      ])
+
+      # Performance and security metrics
+      metrics = optional(list(object({
+        category = string
+        enabled  = optional(bool, true)
+        })), [
+        {
+          category = "AllMetrics"
+          enabled  = true
+        }
+      ])
+    })), {})
   })
 
   # Tenant ID validation
@@ -228,24 +259,101 @@ variable "keyvault_config" {
   # Role assignments validation - least-privilege enforcement
   validation {
     condition = alltrue([
-      for k, v in var.keyvault_config.role_assignments : contains(["User", "Group", "ServicePrincipal"], v.principal_type)
+      for k, v in var.keyvault_config.role_assignments : contains(["User", "Group", "ServicePrincipal", "ManagedIdentity"], v.principal_type)
     ])
-    error_message = "principal_type must be one of: User, Group, ServicePrincipal."
+    error_message = "principal_type must be one of: User, Group, ServicePrincipal, ManagedIdentity."
   }
 
-  # Least-privilege role validation
+  # Validation for least-privileged role assignments - ONLY predefined roles allowed
   validation {
-    condition = alltrue([
-      for k, v in var.keyvault_config.role_assignments : contains([
-        # Least-privilege roles (recommended)
-        "Key Vault Reader", "Key Vault Secrets User", "Key Vault Crypto User", "Key Vault Certificate User",
-        # Role UUIDs (alternative format)
-        "21090545-7ca7-4776-b22c-e363652d74d2", "4633458b-17de-408a-b874-0445c86b69e6",
-        "12338af0-0e69-4776-bea7-57ae8d297424", "db79e9a7-68ee-4b58-9aeb-b90e7c24fcba",
-        # Administrative roles (use sparingly)
-        "Key Vault Administrator", "Key Vault Contributor"
-      ], v.role_definition_id_or_name)
-    ])
-    error_message = "Only approved least-privilege roles are allowed. Use: Key Vault Reader, Key Vault Secrets User, Key Vault Crypto User, Key Vault Certificate User, or administrative roles sparingly."
+    condition = (
+      length(coalesce(var.keyvault_config.role_assignments, {})) == 0 ||
+      alltrue([
+        for ra in values(var.keyvault_config.role_assignments) : (
+          contains([
+            # READ-ONLY ROLES (Least Privilege)
+            "Key Vault Reader",
+
+            # SECRETS MANAGEMENT (Granular Access)
+            "Key Vault Secrets User",    # Read secrets only
+            "Key Vault Secrets Officer", # Full secret management
+
+            # CRYPTOGRAPHIC OPERATIONS (Granular Access)  
+            "Key Vault Crypto User",                    # Encrypt/decrypt operations
+            "Key Vault Crypto Officer",                 # Full key management
+            "Key Vault Crypto Service Encryption User", # Service encryption only
+            "Key Vault Crypto Service Release User",    # Key release for VMs
+
+            # CERTIFICATE MANAGEMENT (Granular Access)
+            "Key Vault Certificate User",     # Read certificates only
+            "Key Vault Certificates Officer", # Full certificate management
+
+            # SPECIALIZED OPERATIONS
+            "Key Vault Data Access Administrator", # Manage role assignments only
+
+            # GENERAL MONITORING/SECURITY ROLES
+            "Reader",            # Read-only access
+            "Monitoring Reader", # Monitoring data access
+            "Security Reader"    # Security-related read access
+          ], ra.role_definition_id_or_name)
+        )
+      ])
+    )
+    error_message = <<-EOT
+      Role assignments must use ONLY predefined least-privilege roles. Custom roles and administrative roles are not supported to prevent security bypasses.
+      
+      Allowed Key Vault Data Plane Roles:
+      READ-ONLY ROLES:
+      - Key Vault Reader
+      
+      SECRETS MANAGEMENT:
+      - Key Vault Secrets User (read secrets only)
+      - Key Vault Secrets Officer (full secret management)
+      
+      CRYPTOGRAPHIC OPERATIONS:
+      - Key Vault Crypto User (encrypt/decrypt operations)
+      - Key Vault Crypto Officer (full key management)
+      - Key Vault Crypto Service Encryption User (service encryption only)
+      - Key Vault Crypto Service Release User (key release for VMs)
+      
+      CERTIFICATE MANAGEMENT:
+      - Key Vault Certificate User (read certificates only)
+      - Key Vault Certificates Officer (full certificate management)
+      
+      SPECIALIZED OPERATIONS:
+      - Key Vault Data Access Administrator (manage role assignments only)
+      
+      GENERAL ROLES:
+      - Reader (read-only access)
+      - Monitoring Reader (monitoring data access)
+      - Security Reader (security-related read access)
+      
+      BLOCKED: All custom roles, resource IDs, and privileged administrative roles (Key Vault Administrator, Key Vault Contributor, Owner, Contributor, etc.).
+    EOT
+  }
+
+  # Additional validation to explicitly block privileged roles by name
+  validation {
+    condition = (
+      length(coalesce(var.keyvault_config.role_assignments, {})) == 0 ||
+      alltrue([
+        for ra in values(var.keyvault_config.role_assignments) : (
+          !contains([
+            # Explicitly blocked privileged role names
+            "Owner",
+            "Contributor",
+            "User Access Administrator",
+            "Key Vault Administrator",
+            "Key Vault Contributor",
+            "Security Admin",
+            "Backup Operator",
+            "Restore Operator"
+          ], ra.role_definition_id_or_name) &&
+          # Block any resource ID format (custom roles not allowed)
+          !can(regex("^/subscriptions/.+/providers/Microsoft.Authorization/roleDefinitions/.+$", ra.role_definition_id_or_name))
+        )
+      ])
+    )
+    error_message = "Privileged roles and custom roles (including resource IDs) are explicitly blocked. Only predefined least-privilege role names from the approved list are allowed."
   }
 }
