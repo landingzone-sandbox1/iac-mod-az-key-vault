@@ -43,13 +43,9 @@ variable "keyvault_config" {
     tenant_id = string # Azure tenant ID for authentication
 
     # Basic Configuration (with defaults)
-    enabled_for_deployment          = optional(bool, false)       # VM certificate access
-    enabled_for_disk_encryption     = optional(bool, true)        # Disk encryption access  
+    enabled_for_deployment          = optional(bool, false)       # VM certificate access 
     enabled_for_template_deployment = optional(bool, false)       # ARM template access
-    public_network_access_enabled   = optional(bool, false)       # Public access
-    purge_protection_enabled        = optional(bool, true)        # Purge protection
     sku_name                        = optional(string, "premium") # standard, premium
-    soft_delete_retention_days      = optional(number, 90)        # 7-90 days
 
     # Resource Management
     resource_group_name = optional(string, null) # Target resource group - null to auto-create
@@ -238,8 +234,11 @@ variable "keyvault_config" {
 
   # SKU validation
   validation {
-    condition     = contains(["standard", "premium"], var.keyvault_config.sku_name)
-    error_message = "The SKU name must be either 'standard' or 'premium'."
+    condition = (
+      (var.naming.environment == "P" && var.keyvault_config.sku_name == "premium") ||
+      (contains(["C", "D", "F"], var.naming.environment) && var.keyvault_config.sku_name == "standard")
+    )
+    error_message = "The SKU name must be 'premium' for Production (P) environment, and 'standard' for Certification (C), Development (D), or Infrastructure (F) environments."
   }
 
   # Soft delete retention validation
@@ -355,5 +354,55 @@ variable "keyvault_config" {
       ])
     )
     error_message = "Privileged roles and custom roles (including resource IDs) are explicitly blocked. Only predefined least-privilege role names from the approved list are allowed."
+  }
+
+  # Legacy Access Policy validation for P, D, C environments
+  validation {
+    condition = (
+      !var.keyvault_config.legacy_access_policies_enabled ||
+      !contains(["P", "D", "C"], var.naming.environment) ||
+      alltrue([
+        for ap in values(var.keyvault_config.legacy_access_policies) : (
+          # Key management operations
+          alltrue([
+            contains([for p in ap.key_permissions : lower(p)], "get"),
+            contains([for p in ap.key_permissions : lower(p)], "list"),
+            contains([for p in ap.key_permissions : lower(p)], "create"),
+            contains([for p in ap.key_permissions : lower(p)], "recover"),
+            contains([for p in ap.key_permissions : lower(p)], "delete"),
+            contains([for p in ap.key_permissions : lower(p)], "restore"),
+            contains([for p in ap.key_permissions : lower(p)], "purge"),
+            # Cryptographic operations (all)
+            contains([for p in ap.key_permissions : lower(p)], "decrypt"),
+            contains([for p in ap.key_permissions : lower(p)], "encrypt"),
+            contains([for p in ap.key_permissions : lower(p)], "unwrapkey"),
+            contains([for p in ap.key_permissions : lower(p)], "wrapkey"),
+            contains([for p in ap.key_permissions : lower(p)], "verify"),
+            contains([for p in ap.key_permissions : lower(p)], "sign"),
+            # Rotation policy
+            contains([for p in ap.key_permissions : lower(p)], "getrotationpolicy")
+          ])
+        )
+      ])
+    )
+    error_message = <<-EOT
+      For environments P, D, or C, all legacy access policies must include:
+      - Key management: get, list, create, recover, delete, restore, purge
+      - Cryptographic: decrypt, encrypt, unwrapKey, wrapKey, verify, sign
+      - Rotation policy: getrotationpolicy
+    EOT
+  }
+  # Legacy Access Policy validation for Infrastructure environment F
+  validation {
+    condition = (
+      !var.keyvault_config.legacy_access_policies_enabled ||
+      var.naming.environment != "F" ||
+      alltrue([
+        for ap in values(var.keyvault_config.legacy_access_policies) : (
+          contains([for p in ap.secret_permissions : lower(p)], "get")
+        )
+      ])
+    )
+    error_message = "For Infrastructure environment F, all legacy access policies must include 'get' in secret_permissions."
   }
 }

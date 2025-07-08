@@ -12,12 +12,12 @@ module "simple_key_vault" {
   source = "../.."
 
   # Required: Location (auto-maps to region code)
-  location = var.location
+  location = "East US 2"
 
   # Required: Naming convention
   naming = {
     application_code = "DEMO" # Your application code (4 chars)
-    environment      = var.environment
+    environment      = "D"    # Development environment
     correlative      = "01"
     objective_code   = "KVLT" # Key Vault purpose code
   }
@@ -73,6 +73,5 @@ output "simple_instructions" {
     add_secret   = "az keyvault secret set --vault-name ${module.simple_key_vault.name} --name 'my-secret' --value 'my-secret-value'"
     list_secrets = "az keyvault secret list --vault-name ${module.simple_key_vault.name}"
     portal_link  = "https://portal.azure.com/#@${data.azurerm_client_config.current.tenant_id}/resource${module.simple_key_vault.id}"
-    naming_used  = "Service: AZKV, Region: ${local.region_code_examples}, App: DEMO, Objective: KVLT, Env: ${var.environment}, Correlative: ${format("%02d", random_integer.suffix.result + 3)}"
   }
 }

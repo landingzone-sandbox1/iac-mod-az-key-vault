@@ -40,11 +40,11 @@ resource "azurerm_key_vault" "this" {
   sku_name                        = var.keyvault_config.sku_name
   enable_rbac_authorization       = local.rbac_enabled
   enabled_for_deployment          = var.keyvault_config.enabled_for_deployment
-  enabled_for_disk_encryption     = var.keyvault_config.enabled_for_disk_encryption
+  enabled_for_disk_encryption     = local.enabled_for_disk_encryption
   enabled_for_template_deployment = var.keyvault_config.enabled_for_template_deployment
-  public_network_access_enabled   = var.keyvault_config.public_network_access_enabled
-  purge_protection_enabled        = var.keyvault_config.purge_protection_enabled
-  soft_delete_retention_days      = var.keyvault_config.soft_delete_retention_days
+  public_network_access_enabled   = local.public_network_access_enabled
+  purge_protection_enabled        = local.purge_protection_enabled
+  soft_delete_retention_days      = local.soft_delete_retention_days
   tags                            = local.merged_tags
 
   # Always apply network ACLs for security compliance (secure defaults if not specified)

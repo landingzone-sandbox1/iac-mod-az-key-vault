@@ -74,6 +74,13 @@ locals {
   # CONFIGURATION LOGIC
   # =============================================================================
 
+  # LBS - Key Vault configuration defaults
+  soft_delete_retention_days    = 90
+  purge_protection_enabled      = true
+  public_network_access_enabled = false
+  enabled_for_disk_encryption   = true
+
+
   # Tags with BCP naming information
   default_tags = {
     # BCP Standard tags
