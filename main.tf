@@ -222,7 +222,7 @@ resource "azurerm_private_endpoint" "this" {
   private_service_connection {
     name                           = coalesce(each.value.private_service_connection_name, "psc-${local.keyvault_name}")
     private_connection_resource_id = azurerm_key_vault.this.id
-    subresource_names              = ["vault"]
+    subresource_names              = [local.keyvault_subresource_name]
     is_manual_connection           = each.value.is_manual_connection
   }
 
@@ -255,7 +255,7 @@ resource "azurerm_management_lock" "this" {
   lock_level = var.keyvault_config.lock.kind
   name       = coalesce(var.keyvault_config.lock.name, "lock-${local.keyvault_name}")
   scope      = azurerm_key_vault.this.id
-  notes      = var.keyvault_config.lock.kind == "CanNotDelete" ? "Cannot delete the resource or its child resources." : "Cannot delete or modify the resource or its child resources."
+  notes      = local.final_lock_notes
 }
 
 # =============================================================================
@@ -300,7 +300,7 @@ resource "azurerm_key_vault_access_policy" "legacy" {
   for_each = local.legacy_access_policies_enabled ? var.keyvault_config.legacy_access_policies : {}
 
   key_vault_id = azurerm_key_vault.this.id
-  tenant_id    = var.keyvault_config.tenant_id
+  tenant_id    = local.final_tenant_id
   object_id    = each.value.object_id
 
   application_id          = each.value.application_id

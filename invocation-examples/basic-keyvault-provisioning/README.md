@@ -1,22 +1,39 @@
-# Key Vault Module Examples
+# Basic Key Vault Provisioning Example
 
-This directory contains examples demonstrating how to use the Azure Key Vault Terraform module with the simplified module-template interface.
+## Use Case
+**Basic Azure Key Vault Provisioning for Development Environment**
 
-## Module Interface
+This example demonstrates how to provision a basic Azure Key Vault with RBAC, secrets, and keys for development teams using BCP naming conventions.
 
-The module follows the **module-template pattern** with:
+## When to Apply
+Use this example when setting up a development Key Vault with basic security features and sample content for:
+- Development team Key Vault setup
+- Testing Key Vault functionality
+- Learning BCP naming conventions
+- Demonstrating least-privilege RBAC
 
-- **`location`** - Top-level variable for Azure region (auto-maps to region code)
-- **`naming`** - Object containing BCP naming convention fields
-- **`keyvault_config`** - Object containing all Key Vault configuration
+## Prerequisites
+- Azure CLI or PowerShell authenticated
+- Appropriate Azure permissions to create Resource Groups, Key Vaults, and Role Assignments
+- Terraform 1.9 or later
+- AzureRM provider 4.28 or later
 
-## BCP Naming Convention
+## Variables and Configuration
 
-The module automatically generates resource names following the BCP standard:
+### Input Variables (from example.auto.tfvars)
+- **location**: Azure region for deployment (default: "East US 2")
+- **environment**: Environment code (default: "D" for Development)
 
-```
-{ServiceCode}{RegionCode}{ApplicationCode}{ObjectiveCode}{Environment}{Correlative}
-```
+### Locals Configuration
+The example uses locals to define:
+- **BCP Naming Components**: application_code="FINC", objective_code="SEC", correlative="01"
+- **Region Mapping**: Maps location to BCP region codes (EU2, WU2, etc.)
+- **Corporate IP Ranges**: Allowed network access ranges
+- **Sample Content**: Demonstration secrets and keys
+- **RBAC Configuration**: Current user principal ID from data source
+
+### Data Sources
+- **azurerm_client_config**: Auto-detects current Azure context for tenant ID and user principal ID
 
 Example: `AZKVEUS2DEMOKLT D01`
 - `AZKV` = Azure Key Vault service code
@@ -209,3 +226,47 @@ For issues or questions about the Key Vault module:
 2. Review these examples
 3. Validate your configuration matches the interface
 4. Ensure you're using supported regions and naming conventions
+
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+|------|---------|
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | ~> 1.9 |
+| <a name="requirement_azurerm"></a> [azurerm](#requirement\_azurerm) | ~> 4.28 |
+| <a name="requirement_random"></a> [random](#requirement\_random) | ~> 3.1 |
+
+## Providers
+
+| Name | Version |
+|------|---------|
+| <a name="provider_azurerm"></a> [azurerm](#provider\_azurerm) | 4.28.0 |
+
+## Modules
+
+| Name | Source | Version |
+|------|--------|---------|
+| <a name="module_keyvault_basic"></a> [keyvault\_basic](#module\_keyvault\_basic) | ../.. | n/a |
+
+## Resources
+
+| Name | Type |
+|------|------|
+| [azurerm_resource_group.example](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
+| [azurerm_client_config.current](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/client_config) | data source |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_environment"></a> [environment](#input\_environment) | Environment code (D=Development, C=Certification, P=Production, F=Functional) | `string` | `"D"` | no |
+| <a name="input_location"></a> [location](#input\_location) | Azure region for deployment | `string` | `"East US 2"` | no |
+
+## Outputs
+
+| Name | Description |
+|------|-------------|
+| <a name="output_keyvault_info"></a> [keyvault\_info](#output\_keyvault\_info) | Key Vault information for development team |
+| <a name="output_rbac_assignments"></a> [rbac\_assignments](#output\_rbac\_assignments) | RBAC assignments created for the Key Vault (not available: module does not export this output) |
+| <a name="output_security_compliance"></a> [security\_compliance](#output\_security\_compliance) | Security compliance status |
+<!-- END_TF_DOCS -->

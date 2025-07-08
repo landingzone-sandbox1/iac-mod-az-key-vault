@@ -76,3 +76,6 @@ TestRecord/
 variables_from_main.tf
 variables-from-main.tf
 variables-simple.tf
+
+/usage-markdown/
+invocation-examples/basic-keyvault-provisioning/tfplan

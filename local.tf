@@ -159,4 +159,22 @@ locals {
     # SPECIALIZED OPERATIONS
     "Key Vault Data Access Administrator" = "8b54135c-b56d-4d72-a534-26097cfdc8d8" # Manage role assignments only
   }
+
+  # =============================================================================
+  # MODULE-INTERNAL CONSTANTS
+  # =============================================================================
+
+  # Private endpoint constants
+  keyvault_subresource_name = "vault"
+
+  # Lock message constants  
+  lock_notes_cannot_delete = "Cannot delete the resource or its child resources."
+  lock_notes_readonly      = "Cannot delete or modify the resource or its child resources."
+
+  # Computed lock notes based on lock kind
+  final_lock_notes = var.keyvault_config.lock != null ? (
+    var.keyvault_config.lock.kind == "CanNotDelete" ?
+    local.lock_notes_cannot_delete :
+    local.lock_notes_readonly
+  ) : local.lock_notes_cannot_delete
 }
