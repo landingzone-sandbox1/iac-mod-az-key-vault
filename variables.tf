@@ -241,12 +241,6 @@ variable "keyvault_config" {
     error_message = "The SKU name must be 'premium' for Production (P) environment, and 'standard' for Certification (C), Development (D), or Infrastructure (F) environments."
   }
 
-  # Soft delete retention validation
-  validation {
-    condition     = var.keyvault_config.soft_delete_retention_days >= 7 && var.keyvault_config.soft_delete_retention_days <= 90
-    error_message = "Soft delete retention days must be between 7 and 90."
-  }
-
   # Key validation
   validation {
     condition = alltrue([
