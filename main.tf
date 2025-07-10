@@ -12,7 +12,7 @@ data "azurerm_client_config" "current" {}
 resource "azurerm_key_vault" "this" {
   location                        = var.location
   name                            = local.keyvault_name
-  resource_group_name             = var.keyvault_config.resource_group_name
+  resource_group_name             = local.resource_group_name
   tenant_id                       = local.final_tenant_id
   sku_name                        = var.keyvault_config.sku_name
   enable_rbac_authorization       = local.rbac_enabled
@@ -192,7 +192,7 @@ resource "azurerm_private_endpoint" "this" {
 
   name                = coalesce(each.value.name, "pe-${local.keyvault_name}")
   location            = coalesce(each.value.location, var.location)
-  resource_group_name = coalesce(each.value.resource_group_name, var.keyvault_config.resource_group_name)
+  resource_group_name = coalesce(each.value.resource_group_name, local.resource_group_name)
   subnet_id           = each.value.subnet_resource_id
   tags                = each.value.tags
 

@@ -90,6 +90,9 @@ locals {
   # Auto-detection logic for optional values
   final_tenant_id = var.keyvault_config.tenant_id != null ? var.keyvault_config.tenant_id : data.azurerm_client_config.current.tenant_id
 
+  # Resource group name handling - create BCP-compliant name when null
+  resource_group_name = var.keyvault_config.resource_group_name != null ? var.keyvault_config.resource_group_name.name : "RSG${local.region_code}${local.application_code}${local.objective_code}${local.environment}${local.correlative}"
+
   # Process RBAC assignments with auto-detection of principal_id and least-privilege validation
   # This uses local.keyvault_rbac_roles to enforce only approved roles are assigned
   processed_role_assignments = {

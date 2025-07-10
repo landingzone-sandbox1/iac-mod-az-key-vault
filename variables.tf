@@ -98,7 +98,10 @@ variable "keyvault_config" {
     sku_name                        = optional(string, "premium") # standard, premium
 
     # Resource Management
-    resource_group_name = string # Target resource group - must be provided
+    resource_group_name = optional(object({
+      create_new = bool
+      name       = optional(string, null)
+    }))
     lock = optional(object({
       kind = string # CanNotDelete, ReadOnly
       name = optional(string, null)
