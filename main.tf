@@ -6,36 +6,13 @@
 data "azurerm_client_config" "current" {}
 
 # =============================================================================
-# RESOURCE GROUP CREATION (when not provided)
-# =============================================================================
-
-# Create resource group if not specified by user
-resource "azurerm_resource_group" "this" {
-  count    = local.create_resource_group ? 1 : 0
-  name     = local.resource_group_name_generated
-  location = var.location
-
-  tags = merge(
-    {
-      # Default tags for resource group
-      Environment    = var.naming.environment == "P" ? "Production" : var.naming.environment == "C" ? "Certification" : var.naming.environment == "F" ? "Functional" : "Development"
-      NamingStandard = "BCP-IT-Department"
-      ResourceType   = "resource-group"
-      Location       = var.location
-      CreatedFor     = "Key Vault ${local.keyvault_name}"
-    },
-    var.keyvault_config.tags
-  )
-}
-
-# =============================================================================
 # AZURE KEY VAULT RESOURCE
 # =============================================================================
 
 resource "azurerm_key_vault" "this" {
   location                        = var.location
   name                            = local.keyvault_name
-  resource_group_name             = local.final_rg_name
+  resource_group_name             = var.keyvault_config.resource_group_name
   tenant_id                       = local.final_tenant_id
   sku_name                        = var.keyvault_config.sku_name
   enable_rbac_authorization       = local.rbac_enabled
@@ -215,7 +192,7 @@ resource "azurerm_private_endpoint" "this" {
 
   name                = coalesce(each.value.name, "pe-${local.keyvault_name}")
   location            = coalesce(each.value.location, var.location)
-  resource_group_name = coalesce(each.value.resource_group_name, local.final_rg_name)
+  resource_group_name = coalesce(each.value.resource_group_name, var.keyvault_config.resource_group_name)
   subnet_id           = each.value.subnet_resource_id
   tags                = each.value.tags
 
@@ -265,13 +242,9 @@ resource "azurerm_management_lock" "this" {
 resource "azurerm_monitor_diagnostic_setting" "this" {
   for_each = local.diagnostic_settings_enabled ? var.keyvault_config.diagnostic_settings : {}
 
-  name                           = each.value.name
-  target_resource_id             = azurerm_key_vault.this.id
-  log_analytics_workspace_id     = each.value.log_analytics_workspace_id
-  storage_account_id             = each.value.storage_account_id
-  eventhub_authorization_rule_id = each.value.eventhub_authorization_rule_id
-  eventhub_name                  = each.value.eventhub_name
-  partner_solution_id            = each.value.partner_solution_id
+  name                       = each.value.name
+  target_resource_id         = azurerm_key_vault.this.id
+  log_analytics_workspace_id = each.value.log_analytics_workspace_id
 
   # LBS requirement: AuditEvent logs for security investigation
   dynamic "enabled_log" {

@@ -1,7 +1,57 @@
 variable "location" {
   type        = string
-  description = "The Azure location where the resources will be deployed."
+  description = "The Azure location where the resources will be deployed. Must be one of the approved Credicorp regions."
   nullable    = false
+
+  validation {
+    condition = contains(keys({
+      # North America regions (approved for Credicorp operations)
+      "eastus"         = "EU1"
+      "eastus2"        = "EU2" # LBS preferred region
+      "centralus"      = "CU1"
+      "northcentralus" = "NCU"
+      "southcentralus" = "SCU"
+      "westus"         = "WU1"
+      "westus2"        = "WU2"
+      "westus3"        = "WU3"
+      "canadacentral"  = "CC1"
+      "canadaeast"     = "CE1"
+
+      # South America regions (primary for Latin American operations)
+      "brazilsouth"     = "BS1"
+      "brazilsoutheast" = "BSE"
+      "mexicocentral"   = "MC1"
+      "chilecentral"    = "CL1"
+
+      # Titlecase variants (for backwards compatibility)
+      "East US"          = "EU1"
+      "East US 2"        = "EU2"
+      "Central US"       = "CU1"
+      "North Central US" = "NCU"
+      "South Central US" = "SCU"
+      "West US"          = "WU1"
+      "West US 2"        = "WU2"
+      "West US 3"        = "WU3"
+      "Canada Central"   = "CC1"
+      "Canada East"      = "CE1"
+      "Brazil South"     = "BS1"
+      "Brazil Southeast" = "BSE"
+      "Mexico Central"   = "MC1"
+      "Chile Central"    = "CL1"
+    }), var.location)
+
+    error_message = <<-EOT
+      Invalid Azure location specified. Please use one of the approved Credicorp regions:
+      
+      North America: eastus, eastus2, centralus, northcentralus, southcentralus, westus, westus2, westus3, canadacentral, canadaeast
+      South America: brazilsouth, brazilsoutheast, mexicocentral, chilecentral
+      
+      Note: East US 2 (eastus2) is the preferred region for Key Vault deployments as per LBS requirements.
+      Ensure the selected region aligns with your application's compliance and data residency requirements.
+      
+      These locations correspond to the region codes defined in the Credicorp naming convention.
+    EOT
+  }
 }
 
 # Naming convention object (excludes region_code - auto-generated from location)
@@ -37,7 +87,7 @@ variable "naming" {
 
 # Complete Key Vault configuration consolidated into keyvault_config object
 variable "keyvault_config" {
-  description = "Azure Key Vault service configuration following module-template pattern"
+  description = "Key Vault configuration. Must include resource_group_name (existing), name, sku_name, and diagnostic_settings."
   type = object({
     # Required
     tenant_id = string # Azure tenant ID for authentication
@@ -48,7 +98,7 @@ variable "keyvault_config" {
     sku_name                        = optional(string, "premium") # standard, premium
 
     # Resource Management
-    resource_group_name = optional(string, null) # Target resource group - null to auto-create
+    resource_group_name = string # Target resource group - must be provided
     lock = optional(object({
       kind = string # CanNotDelete, ReadOnly
       name = optional(string, null)

@@ -48,6 +48,11 @@ variable "location" {
   default     = "East US 2"
 }
 
+variable "resource_group_name" {
+  description = "Name of an existing Azure resource group to deploy the Key Vault into. Must be created outside this example."
+  type        = string
+}
+
 variable "environment" {
   description = "Environment code (D=Development, C=Certification, P=Production, F=Functional)"
   type        = string
@@ -122,27 +127,6 @@ locals {
 
   # RBAC Configuration
   current_user_principal_id = data.azurerm_client_config.current.object_id
-
-  # Resource Group Name for Examples
-  example_rg_name = "RSG${local.region_code}${local.application_code}${local.objective_code}${var.environment}${local.correlative}"
-}
-
-# =============================================================================
-# RESOURCE GROUP FOR EXAMPLE
-# =============================================================================
-
-resource "azurerm_resource_group" "example" {
-  name     = local.example_rg_name
-  location = var.location
-
-  tags = {
-    Environment    = var.environment == "P" ? "Production" : var.environment == "C" ? "Certification" : var.environment == "F" ? "Functional" : "Development"
-    Purpose        = "Key Vault Module Example"
-    Application    = local.application_code
-    ObjectiveCode  = local.objective_code
-    ManagedBy      = "terraform"
-    NamingStandard = "BCP-IT-Department"
-  }
 }
 
 # =============================================================================
@@ -162,8 +146,7 @@ module "keyvault_basic" {
   }
 
   keyvault_config = {
-    # Use the created resource group
-    resource_group_name = azurerm_resource_group.example.name
+    resource_group_name = var.resource_group_name
 
     # Auto-detect tenant ID from current context
     tenant_id = data.azurerm_client_config.current.tenant_id
@@ -233,7 +216,7 @@ output "keyvault_info" {
     name                = module.keyvault_basic.resource.name
     id                  = module.keyvault_basic.resource.id
     vault_uri           = module.keyvault_basic.resource.uri
-    resource_group_name = azurerm_resource_group.example.name
+    resource_group_name = var.resource_group_name
     location            = var.location
   }
 }

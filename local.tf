@@ -57,20 +57,6 @@ locals {
   keyvault_name = local.name
 
   # =============================================================================
-  # RESOURCE GROUP LOGIC
-  # =============================================================================
-
-  # Generate BCP-compliant resource group name if not provided  
-  # Include objective code to match Key Vault naming pattern
-  resource_group_name_generated = "RSG${local.region_code}${local.application_code}${local.objective_code}${local.environment}${local.correlative}"
-
-  # Determine if we need to create a resource group
-  create_resource_group = var.keyvault_config.resource_group_name == null ? true : false
-
-  # Final resource group name - either user-provided or auto-generated (from created RG)
-  final_rg_name = var.keyvault_config.resource_group_name != null ? var.keyvault_config.resource_group_name : azurerm_resource_group.this[0].name
-
-  # =============================================================================
   # CONFIGURATION LOGIC
   # =============================================================================
 
