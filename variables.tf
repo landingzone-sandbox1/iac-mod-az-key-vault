@@ -97,6 +97,11 @@ variable "keyvault_config" {
     enabled_for_template_deployment = optional(bool, false)       # ARM template access
     sku_name                        = optional(string, "premium") # standard, premium
 
+    # Security and Network Configuration (environment-specific)
+    purge_protection_enabled      = optional(bool)       # Enable/disable purge protection (null = auto based on environment)
+    public_network_access_enabled = optional(bool)       # Enable/disable public network access (null = default false)
+    soft_delete_retention_days    = optional(number, 90) # Soft delete retention period
+
     # Resource Management
     resource_group_name = optional(object({
       create_new = bool
@@ -114,18 +119,6 @@ variable "keyvault_config" {
       ip_rules                   = optional(list(string), [])        # CIDR blocks
       virtual_network_subnet_ids = optional(list(string), [])        # Subnet IDs
     }))
-
-    # RBAC Assignments
-    role_assignments = optional(map(object({
-      role_definition_id_or_name             = string
-      principal_id                           = string
-      principal_type                         = string
-      description                            = optional(string, null)
-      skip_service_principal_aad_check       = optional(bool, false)
-      condition                              = optional(string, null)
-      condition_version                      = optional(string, null)
-      delegated_managed_identity_resource_id = optional(string, null)
-    })), {})
 
     # Legacy Access Policies (for backwards compatibility)
     legacy_access_policies_enabled = optional(bool, false)
@@ -180,7 +173,7 @@ variable "keyvault_config" {
     # Key Vault Secrets
     secrets = optional(map(object({
       name            = string
-      value           = string
+      value           = optional(string) # Optional - enables template secrets without values
       content_type    = optional(string) # MIME type
       not_before_date = optional(string) # RFC 3339 date
       expiration_date = optional(string) # RFC 3339 date
@@ -302,107 +295,6 @@ variable "keyvault_config" {
     error_message = "Key type must be one of: RSA, EC, RSA-HSM, EC-HSM."
   }
 
-  # Role assignments validation - least-privilege enforcement
-  validation {
-    condition = alltrue([
-      for k, v in var.keyvault_config.role_assignments : contains(["User", "Group", "ServicePrincipal", "ManagedIdentity"], v.principal_type)
-    ])
-    error_message = "principal_type must be one of: User, Group, ServicePrincipal, ManagedIdentity."
-  }
-
-  # Validation for least-privileged role assignments - ONLY predefined roles allowed
-  validation {
-    condition = (
-      length(coalesce(var.keyvault_config.role_assignments, {})) == 0 ||
-      alltrue([
-        for ra in values(var.keyvault_config.role_assignments) : (
-          contains([
-            # READ-ONLY ROLES (Least Privilege)
-            "Key Vault Reader",
-
-            # SECRETS MANAGEMENT (Granular Access)
-            "Key Vault Secrets User",    # Read secrets only
-            "Key Vault Secrets Officer", # Full secret management
-
-            # CRYPTOGRAPHIC OPERATIONS (Granular Access)  
-            "Key Vault Crypto User",                    # Encrypt/decrypt operations
-            "Key Vault Crypto Officer",                 # Full key management
-            "Key Vault Crypto Service Encryption User", # Service encryption only
-            "Key Vault Crypto Service Release User",    # Key release for VMs
-
-            # CERTIFICATE MANAGEMENT (Granular Access)
-            "Key Vault Certificate User",     # Read certificates only
-            "Key Vault Certificates Officer", # Full certificate management
-
-            # SPECIALIZED OPERATIONS
-            "Key Vault Data Access Administrator", # Manage role assignments only
-
-            # GENERAL MONITORING/SECURITY ROLES
-            "Reader",            # Read-only access
-            "Monitoring Reader", # Monitoring data access
-            "Security Reader"    # Security-related read access
-          ], ra.role_definition_id_or_name)
-        )
-      ])
-    )
-    error_message = <<-EOT
-      Role assignments must use ONLY predefined least-privilege roles. Custom roles and administrative roles are not supported to prevent security bypasses.
-      
-      Allowed Key Vault Data Plane Roles:
-      READ-ONLY ROLES:
-      - Key Vault Reader
-      
-      SECRETS MANAGEMENT:
-      - Key Vault Secrets User (read secrets only)
-      - Key Vault Secrets Officer (full secret management)
-      
-      CRYPTOGRAPHIC OPERATIONS:
-      - Key Vault Crypto User (encrypt/decrypt operations)
-      - Key Vault Crypto Officer (full key management)
-      - Key Vault Crypto Service Encryption User (service encryption only)
-      - Key Vault Crypto Service Release User (key release for VMs)
-      
-      CERTIFICATE MANAGEMENT:
-      - Key Vault Certificate User (read certificates only)
-      - Key Vault Certificates Officer (full certificate management)
-      
-      SPECIALIZED OPERATIONS:
-      - Key Vault Data Access Administrator (manage role assignments only)
-      
-      GENERAL ROLES:
-      - Reader (read-only access)
-      - Monitoring Reader (monitoring data access)
-      - Security Reader (security-related read access)
-      
-      BLOCKED: All custom roles, resource IDs, and privileged administrative roles (Key Vault Administrator, Key Vault Contributor, Owner, Contributor, etc.).
-    EOT
-  }
-
-  # Additional validation to explicitly block privileged roles by name
-  validation {
-    condition = (
-      length(coalesce(var.keyvault_config.role_assignments, {})) == 0 ||
-      alltrue([
-        for ra in values(var.keyvault_config.role_assignments) : (
-          !contains([
-            # Explicitly blocked privileged role names
-            "Owner",
-            "Contributor",
-            "User Access Administrator",
-            "Key Vault Administrator",
-            "Key Vault Contributor",
-            "Security Admin",
-            "Backup Operator",
-            "Restore Operator"
-          ], ra.role_definition_id_or_name) &&
-          # Block any resource ID format (custom roles not allowed)
-          !can(regex("^/subscriptions/.+/providers/Microsoft.Authorization/roleDefinitions/.+$", ra.role_definition_id_or_name))
-        )
-      ])
-    )
-    error_message = "Privileged roles and custom roles (including resource IDs) are explicitly blocked. Only predefined least-privilege role names from the approved list are allowed."
-  }
-
   # Legacy Access Policy validation for P, D, C environments
   validation {
     condition = (
@@ -451,5 +343,23 @@ variable "keyvault_config" {
       ])
     )
     error_message = "For Infrastructure environment F, all legacy access policies must include 'get' in secret_permissions."
+  }
+
+  # Secret name validation - ensure consistent naming
+  validation {
+    condition = alltrue([
+      for k, v in var.keyvault_config.secrets : can(regex("^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$", v.name))
+    ])
+    error_message = "Secret names must start and end with alphanumeric characters, and can contain hyphens in the middle. Single character names are allowed."
+  }
+
+  # Secret value validation - when provided, must not be empty
+  validation {
+    condition = alltrue([
+      for k, v in var.keyvault_config.secrets : (
+        v.value == null || length(v.value) >= 1
+      )
+    ])
+    error_message = "Secret values must be either null (template-only) or contain at least 1 character. Empty strings are not allowed."
   }
 }

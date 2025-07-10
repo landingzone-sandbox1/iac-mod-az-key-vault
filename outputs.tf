@@ -63,7 +63,7 @@ output "security_compliance_status" {
 
     # PA-7: Follow just enough administration principle
     pa_7_rbac_enabled    = azurerm_key_vault.this.enable_rbac_authorization
-    pa_7_least_privilege = length(local.processed_role_assignments) > 0
+    pa_7_least_privilege = false # RBAC assignments managed outside module
 
     # DP-7: Use a secure certificate management process
     dp_7_key_management         = local.keys_enabled

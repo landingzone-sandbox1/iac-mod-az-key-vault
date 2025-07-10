@@ -34,21 +34,10 @@ resource "azurerm_key_vault" "this" {
 }
 
 # =============================================================================
-# RBAC ASSIGNMENTS 
+# RBAC ASSIGNMENTS - REMOVED FOR SIMPLICITY
 # =============================================================================
-
-resource "azurerm_role_assignment" "this" {
-  for_each = local.processed_role_assignments
-
-  principal_id                           = each.value.principal_id
-  scope                                  = azurerm_key_vault.this.id
-  role_definition_name                   = each.value.role_definition_id_or_name
-  description                            = each.value.description
-  skip_service_principal_aad_check       = each.value.skip_service_principal_aad_check
-  condition                              = each.value.condition
-  condition_version                      = each.value.condition_version
-  delegated_managed_identity_resource_id = each.value.delegated_managed_identity_resource_id
-}
+# Role assignments should be managed outside this module to avoid complexity
+# and permission conflicts. Use Azure Portal, CLI, or dedicated RBAC modules.
 
 # =============================================================================
 # KEY VAULT KEYS
@@ -87,7 +76,6 @@ resource "azurerm_key_vault_key" "this" {
   }
 
   depends_on = [
-    azurerm_role_assignment.this,
     azurerm_key_vault_access_policy.legacy
   ]
 }
@@ -97,7 +85,11 @@ resource "azurerm_key_vault_key" "this" {
 # =============================================================================
 
 resource "azurerm_key_vault_secret" "this" {
-  for_each = local.secrets_enabled ? var.keyvault_config.secrets : {}
+  # Only create secrets that have actual values (filter out template-only secrets)
+  for_each = local.secrets_enabled ? {
+    for k, v in var.keyvault_config.secrets : k => v
+    if v.value != null && v.value != ""
+  } : {}
 
   name            = each.value.name
   value           = each.value.value
@@ -108,7 +100,6 @@ resource "azurerm_key_vault_secret" "this" {
   tags            = each.value.tags
 
   depends_on = [
-    azurerm_role_assignment.this,
     azurerm_key_vault_access_policy.legacy
   ]
 }
@@ -178,7 +169,6 @@ resource "azurerm_key_vault_certificate" "this" {
   }
 
   depends_on = [
-    azurerm_role_assignment.this,
     azurerm_key_vault_access_policy.legacy
   ]
 }
