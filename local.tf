@@ -114,9 +114,9 @@ locals {
   secrets_enabled = length([
     for k, v in var.keyvault_config.secrets : k
     if v.value != null && v.value != ""
-  ]) > 0                                                                            # Used in: azurerm_key_vault_secret.this
-  certificates_enabled        = length(var.keyvault_config.certificates) > 0        # Used in: azurerm_key_vault_certificate.this
-  diagnostic_settings_enabled = length(var.keyvault_config.diagnostic_settings) > 0 # Used in: azurerm_monitor_diagnostic_setting.this (LT-4)
+  ]) > 0                                                                     # Used in: azurerm_key_vault_secret.this
+  certificates_enabled        = length(var.keyvault_config.certificates) > 0 # Used in: azurerm_key_vault_certificate.this
+  diagnostic_settings_enabled = true                                         # Always enabled - diagnostic settings are mandatory (LT-4)
 
   # =============================================================================
   # MODULE-INTERNAL CONSTANTS

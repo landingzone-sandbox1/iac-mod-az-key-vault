@@ -122,7 +122,7 @@ locals {
 
   # RBAC Configuration
   current_user_principal_id = data.azurerm_client_config.current.object_id
-  example_rg_name = "RSG${local.region_code}${local.application_code}${local.objective_code}${var.environment}${local.correlative}"
+  example_rg_name           = "RSG${local.region_code}${local.application_code}${local.objective_code}${var.environment}${local.correlative}"
 }
 
 # =============================================================================
@@ -136,6 +136,27 @@ resource "azurerm_resource_group" "example" {
   tags = {
     Environment    = var.environment == "P" ? "Production" : var.environment == "C" ? "Certification" : var.environment == "F" ? "Functional" : "Development"
     Purpose        = "Key Vault Module Example"
+    Application    = local.application_code
+    ObjectiveCode  = local.objective_code
+    ManagedBy      = "terraform"
+    NamingStandard = "BCP-IT-Department"
+  }
+}
+
+# =============================================================================
+# LOG ANALYTICS WORKSPACE FOR DIAGNOSTIC SETTINGS (MANDATORY)
+# =============================================================================
+
+resource "azurerm_log_analytics_workspace" "example" {
+  name                = "LAW${local.region_code}${local.application_code}${local.objective_code}${var.environment}${local.correlative}"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.example.name
+  sku                 = "PerGB2018"
+  retention_in_days   = 30
+
+  tags = {
+    Environment    = var.environment == "P" ? "Production" : var.environment == "C" ? "Certification" : var.environment == "F" ? "Functional" : "Development"
+    Purpose        = "Key Vault Diagnostic Logs"
     Application    = local.application_code
     ObjectiveCode  = local.objective_code
     ManagedBy      = "terraform"
@@ -206,6 +227,32 @@ module "keyvault_basic" {
 
     # Sample keys for development/testing
     keys = local.sample_keys
+
+    # LT-4: MANDATORY Diagnostic Settings for Security Investigation
+    diagnostic_settings = {
+      "default" = {
+        name                       = "diag-${local.application_code}-${local.objective_code}-${var.environment}"
+        log_analytics_workspace_id = azurerm_log_analytics_workspace.example.id
+
+        # LBS requirement: AuditEvent logs for security investigation
+        enabled_logs = [
+          {
+            category_group = "audit"
+          },
+          {
+            category_group = "allLogs"
+          }
+        ]
+
+        # Performance and security metrics
+        metrics = [
+          {
+            category = "AllMetrics"
+            enabled  = true
+          }
+        ]
+      }
+    }
 
     # Resource lock for protection
     lock = {

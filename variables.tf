@@ -87,7 +87,7 @@ variable "naming" {
 
 # Complete Key Vault configuration consolidated into keyvault_config object
 variable "keyvault_config" {
-  description = "Key Vault configuration. Must include resource_group_name (existing), name, sku_name, and diagnostic_settings."
+  description = "Key Vault configuration. Must include resource_group_name (existing), name, sku_name, and diagnostic_settings (mandatory for security compliance)."
   type = object({
     # Required
     tenant_id = string # Azure tenant ID for authentication
@@ -234,14 +234,10 @@ variable "keyvault_config" {
     # Resource Tags
     tags = optional(map(string), {})
 
-    # LT-4: Diagnostic Settings for Security Investigation (NUEVO LBS)
-    diagnostic_settings = optional(map(object({
-      name                           = string
-      log_analytics_workspace_id     = optional(string)
-      storage_account_id             = optional(string)
-      eventhub_authorization_rule_id = optional(string)
-      eventhub_name                  = optional(string)
-      partner_solution_id            = optional(string)
+    # LT-4: Diagnostic Settings for Security Investigation (NUEVO LBS) - MANDATORY
+    diagnostic_settings = map(object({
+      name                       = string
+      log_analytics_workspace_id = string # REQUIRED - only Log Analytics allowed
 
       # LBS requirement: AuditEvent logs for security investigation
       enabled_logs = optional(list(object({
@@ -263,7 +259,7 @@ variable "keyvault_config" {
           enabled  = true
         }
       ])
-    })), {})
+    }))
   })
 
   # Tenant ID validation
@@ -276,6 +272,20 @@ variable "keyvault_config" {
   validation {
     condition     = var.keyvault_config.lock != null ? contains(["CanNotDelete", "ReadOnly"], var.keyvault_config.lock.kind) : true
     error_message = "Lock kind must be either 'CanNotDelete' or 'ReadOnly'."
+  }
+
+  # LT-4: Diagnostic Settings validation - mandatory for security compliance
+  validation {
+    condition     = length(var.keyvault_config.diagnostic_settings) > 0
+    error_message = "At least one diagnostic setting must be configured for security compliance (LT-4 requirement)."
+  }
+
+  # Diagnostic Settings Log Analytics validation
+  validation {
+    condition = alltrue([
+      for k, v in var.keyvault_config.diagnostic_settings : v.log_analytics_workspace_id != null && v.log_analytics_workspace_id != ""
+    ])
+    error_message = "All diagnostic settings must have a valid log_analytics_workspace_id. Only Log Analytics is allowed as destination."
   }
 
   # SKU validation

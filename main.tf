@@ -230,7 +230,7 @@ resource "azurerm_management_lock" "this" {
 # =============================================================================
 
 resource "azurerm_monitor_diagnostic_setting" "this" {
-  for_each = local.diagnostic_settings_enabled ? var.keyvault_config.diagnostic_settings : {}
+  for_each = var.keyvault_config.diagnostic_settings
 
   name                       = each.value.name
   target_resource_id         = azurerm_key_vault.this.id
