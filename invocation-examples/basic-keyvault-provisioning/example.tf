@@ -73,7 +73,7 @@ data "azurerm_client_config" "current" {}
 locals {
   # BCP Naming Convention Components
   application_code = "FINC" # Finance application
-  objective_code   = "SEC"  # Security/Key Vault purpose
+  objective_code   = "SEGU" # Security/Key Vault purpose
   correlative      = "01"   # First instance
 
   # Region mapping for BCP naming (from auto.tfvars location)

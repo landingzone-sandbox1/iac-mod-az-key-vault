@@ -80,8 +80,8 @@ variable "naming" {
   }
 
   validation {
-    condition     = can(regex("^[A-Z0-9]{3,4}$", var.naming.objective_code))
-    error_message = "objective_code must be 3-4 uppercase alphanumeric characters."
+    condition     = contains(["FRNT", "BACK", "SVLS", "AZML", "INFR", "SEGU"], var.naming.objective_code)
+    error_message = "objective_code must be one of: FRNT (Front-End), BACK (Back-End), SVLS (ServerLess), AZML (Machine Learning), INFR (Infrastructure), SEGU (Security)."
   }
 }
 
