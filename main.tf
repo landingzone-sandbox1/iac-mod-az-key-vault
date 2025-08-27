@@ -34,10 +34,37 @@ resource "azurerm_key_vault" "this" {
 }
 
 # =============================================================================
-# RBAC ASSIGNMENTS - REMOVED FOR SIMPLICITY
+# RBAC ASSIGNMENTS
 # =============================================================================
-# Role assignments should be managed outside this module to avoid complexity
-# and permission conflicts. Use Azure Portal, CLI, or dedicated RBAC modules.
+
+# Create RBAC role assignments for Key Vault access
+resource "azurerm_role_assignment" "keyvault_rbac" {
+  for_each = var.enable_rbac_assignments ? toset(var.keyvault_rbac_roles) : []
+
+  scope                = azurerm_key_vault.this.id
+  role_definition_name = each.value
+  principal_id         = data.azurerm_client_config.current.object_id
+
+  # Handle existing role assignments gracefully
+  lifecycle {
+    # Create before destroy to handle updates smoothly
+    create_before_destroy = true
+
+    # Ignore changes that might cause conflicts
+    ignore_changes = [
+      principal_id
+    ]
+  }
+
+  # Ensure Key Vault is created first
+  depends_on = [azurerm_key_vault.this]
+
+  timeouts {
+    create = "15m"
+    delete = "10m"
+    read   = "5m"
+  }
+}
 
 # =============================================================================
 # KEY VAULT KEYS

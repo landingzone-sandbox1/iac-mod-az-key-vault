@@ -373,3 +373,19 @@ variable "keyvault_config" {
     error_message = "Secret values must be either null (template-only) or contain at least 1 character. Empty strings are not allowed."
   }
 }
+
+variable "enable_rbac_assignments" {
+  description = "Enable RBAC role assignments for Key Vault and other services"
+  type        = bool
+  default     = true
+}
+
+variable "keyvault_rbac_roles" {
+  description = "List of Key Vault RBAC roles to assign to the deployment principal"
+  type        = list(string)
+  default = [
+    "Key Vault Administrator",
+    "Key Vault Certificates Officer",
+    "Key Vault Secrets Officer"
+  ]
+}
